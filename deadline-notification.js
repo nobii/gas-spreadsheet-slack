@@ -5,7 +5,7 @@ var COLUMN_ICON = 3;
 var SUNDAY = 0;
 var SATURDAY = 6;
 
-var calendar = CalendarApp.getCalendarById('ja.japanese#holiday@group.v.calendar.google.com');
+var workdays = [];
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -38,8 +38,9 @@ function saveToken(str) {
 
 function postNotificationMessage() {
   var now = new Date();
-  if (isHoliday(now)) {
-    return; 
+  setWorkdays(now);
+  if (!workdays[0]) {
+    return;
   }
   
   var slackMessage = new SlackMessage();
@@ -61,7 +62,8 @@ function postNotificationMessage() {
       continue;
     }
     
-    var left_days = Math.ceil(countWorkday(now, launch_date));
+    var left_days = Math.ceil((launch_date - now) / 86400000);
+    left_days = countWorkday(left_days);
     var message = (launch_date.getMonth() + 1) + "月" + launch_date.getDate() + "日まであと" + left_days + "営業日です";
   
     slackMessage.postMessage(title, channel, message, icon);
@@ -95,30 +97,31 @@ var SlackMessage = (function() {
   
   return SlackMessage;
 })();
- 
 
-// http://improve-future.com/google-apps-script-process-only-on-business-day.html
-function isHoliday(date) {
-  var weekday = date.getDay();
-  if (weekday == SUNDAY || weekday == SATURDAY) {
-    return true;
+
+function setWorkdays(now) {
+  var calendar = CalendarApp.getCalendarById('ja.japanese#holiday@group.v.calendar.google.com');
+  var dateAfterYear = new Date();
+  dateAfterYear.setYear(dateAfterYear.getFullYear() + 1);
+  var holidays = calendar.getEvents(now, dateAfterYear).map(function(item) {
+    return item.getStartTime().getFullYear() + "/" + (item.getStartTime().getMonth() + 1) + "/" + item.getStartTime().getDate();
+  }); 
+  for (var i = 0; i < 365; i++) {
+    var weekday = now.getDay();
+    var formattedDate = now.getFullYear() + "/" + (now.getMonth() + 1) + "/" + now.getDate();
+    if (weekday == SUNDAY || weekday == SATURDAY || holidays.indexOf(formattedDate) != -1) {
+      workdays[i] = 0;
+    } else {
+      workdays[i] = 1;
+    }
+    now.setDate(now.getDate() + 1);
   }
-  if (calendar.getEventsForDay(date, {max: 1}).length > 0) {
-    return true;
-  }
-  
-  return false;
 }
 
 
-function countWorkday(from, to) {
-  var count = 0;
-  while (from < to) {
-    from.setDate(from.getDate() + 1);
-    if (!isHoliday(from)) {
-      count++;
-    }
-  }
-  
+function countWorkday(days) {
+  var count = workdays.reduce(function(result, item, index, array) {
+    return result + (index < days ? item : 0); 
+  });
   return count;
 }
