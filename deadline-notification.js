@@ -38,7 +38,7 @@ function saveToken(str) {
 
 function postNotificationMessage() {
   var now = new Date();
-  setWorkdays(now);
+  loadWorkdays(now);
   if (!workdays[0]) {
     return;
   }
@@ -47,24 +47,24 @@ function postNotificationMessage() {
   var sheet = SpreadsheetApp.getActiveSheet();
   var values = sheet.getDataRange().getValues();
   var maxRow = sheet.getLastRow();
-  var sheet_url = SpreadsheetApp.getActiveSpreadsheet().getUrl();
+  var sheetUrl = SpreadsheetApp.getActiveSpreadsheet().getUrl();
   
   for (var r = 1; r < maxRow; r++) {
     now = new Date();
     var title = values[r][COLUMN_TITLE];
     var channel = values[r][COLUMN_CHANNEL];
-    var launch_date = values[r][COLUMN_LAUNCH_DATE];
+    var launchDate = values[r][COLUMN_LAUNCH_DATE];
     var icon = values[r][COLUMN_ICON];
     
-    if (launch_date < now) {
-      var message = "このプロジェクトは終了しました！<" + sheet_url + "|ここ>から削除してください";
+    if (launchDate < now) {
+      var message = "このプロジェクトは終了しました！<" + sheetUrl + "|ここ>から削除してください";
       slackMessage.postMessage(title, channel, message, icon);
       continue;
     }
     
-    var left_days = Math.ceil((launch_date - now) / 86400000);
-    left_days = countWorkday(left_days);
-    var message = (launch_date.getMonth() + 1) + "月" + launch_date.getDate() + "日まであと" + left_days + "営業日です";
+    var leftDays = Math.ceil((launchDate - now) / 86400000);
+    var leftWorkDays = countWorkday(leftDays);
+    var message = (launchDate.getMonth() + 1) + "月" + launchDate.getDate() + "日まであと" + leftWorkDays + "営業日です";
   
     slackMessage.postMessage(title, channel, message, icon);
   }
@@ -78,8 +78,8 @@ var SlackMessage = (function() {
     this.channels = this.slackApp.channelsList().channels;
   }
   
-  SlackMessage.prototype.postMessage = function(title, channel_name, message, icon) {
-    var channelId = this.getChannelId(channel_name);
+  SlackMessage.prototype.postMessage = function(title, channelName, message, icon) {
+    var channelId = this.getChannelId(channelName);
     this.slackApp.postMessage(channelId,
                               message, 
                               {
@@ -88,9 +88,9 @@ var SlackMessage = (function() {
                               });
   }
   
-  SlackMessage.prototype.getChannelId = function(channel_name) {
+  SlackMessage.prototype.getChannelId = function(channelName) {
     var channel = this.channels.filter(function(item, index) {
-      if (item.name === channel_name) return true;
+      if (item.name === channelName) return true;
     });
     return channel[0] ? channel[0].id : null;
   }
@@ -99,7 +99,7 @@ var SlackMessage = (function() {
 })();
 
 
-function setWorkdays(now) {
+function loadWorkdays(now) {
   var calendar = CalendarApp.getCalendarById('ja.japanese#holiday@group.v.calendar.google.com');
   var dateAfterYear = new Date();
   dateAfterYear.setYear(dateAfterYear.getFullYear() + 1);
@@ -120,7 +120,8 @@ function setWorkdays(now) {
 
 
 function countWorkday(days) {
-  var count = workdays.reduce(function(result, item, index, array) {
+  var tagetWorkdays = workdays.slice(0, days);
+  var count = targetWorkdays.reduce(function(result, item, index, array) {
     return result + (index < days ? item : 0); 
   });
   return count;
