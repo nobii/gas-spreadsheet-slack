@@ -54,8 +54,10 @@ function postNotificationMessage() {
     var launchDate = values[r][COLUMN_LAUNCH_DATE];
     var icon = values[r][COLUMN_ICON];
     
-    var message = "";
-    if (launchDate < now) {
+    var message;
+    var nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() - 1);
+    if (launchDate < nextDate) {
       message = "このプロジェクトは終了しました！<" + sheetUrl + "|ここ>から削除してください";
     } else {
       var leftDays = Math.ceil((launchDate - now) / DAY_MSECONDS);
@@ -97,9 +99,9 @@ var SlackMessage = (function() {
 
 
 function loadWorkdays() {
-  var now = new Date();
   var workdays = [];
   var calendar = CalendarApp.getCalendarById('ja.japanese#holiday@group.v.calendar.google.com');
+  var now = new Date();
   var dateAfterYear = new Date();
   dateAfterYear.setYear(dateAfterYear.getFullYear() + 1);
   var holidays = calendar.getEvents(now, dateAfterYear).map(function(item) {
@@ -118,6 +120,9 @@ function loadWorkdays() {
 
 
 function countWorkday(days, workdays) {
+  if (days <= 0) {
+    return 0;
+  }
   var targetWorkdays = workdays.slice(0, days);
   var count = targetWorkdays.reduce(function(result, item, index, array) {
     return result + (index < days ? item : 0); 
