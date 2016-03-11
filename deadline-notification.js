@@ -10,6 +10,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("Slackの設定")
     .addItem("Slack API Tokenの登録", "setAPIToken")
+    .addItem("今すぐ実行", "executeNow")
     .addToUi();
 }
 
@@ -32,6 +33,55 @@ function setAPIToken() {
 
 function saveToken(str) {
   PropertiesService.getScriptProperties().setProperty("token", str);
+}
+
+
+function executeNow() {
+  var output = HtmlService.createHtmlOutputFromFile('prompt')
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+      .setWidth(400)
+      .setHeight(200);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  ss.show(output);
+}
+
+
+function getProjectList() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var values = sheet.getSheetValues(2, 1, sheet.getLastRow(), 1);
+  return values[0]
+}
+
+
+function postSingleNotificationMessage(row) {
+  var now = new Date();
+  var workdays = loadWorkdays(now);
+  if (!workdays[0]) {
+    return;
+  }
+
+  var slackMessage = new SlackMessage();
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var values = sheet.getSheetValues(row, 1, 1, sheet.getLastColumn());
+  var sheetUrl = SpreadsheetApp.getActiveSpreadsheet().getUrl();
+
+  var title = values[0][COLUMN_TITLE];
+  var channel = values[0][COLUMN_CHANNEL];
+  var launchDate = values[0][COLUMN_LAUNCH_DATE];
+  var icon = values[0][COLUMN_ICON];
+
+  var message;
+  var prevDate = new Date();
+  prevDate.setDate(prevDate.getDate() - 1);
+  if (launchDate < prevDate) {
+    message = "このプロジェクトは終了しました！<" + sheetUrl + "|ここ>から削除してください";
+  } else {
+    var leftDays = Math.ceil((launchDate - now) / DAY_MSECONDS);
+    var leftWorkDays = countWorkday(leftDays, workdays);
+    message = (launchDate.getMonth() + 1) + "月" + launchDate.getDate() + "日まであと" + leftWorkDays + "営業日です";
+  }
+
+  slackMessage.postMessage(title, channel, message, icon);  
 }
 
 
@@ -70,32 +120,27 @@ function postNotificationMessage() {
 }
 
 
-var SlackMessage = (function() {
-  function SlackMessage() {
-    var prop = PropertiesService.getScriptProperties().getProperties();
-    this.slackApp = SlackApp.create(prop.token);
-    this.channels = this.slackApp.channelsList().channels;
+function postNotificationMessage(slackMessage, workdays, values, now) {
+  var title = values[COLUMN_TITLE];
+  var channel = values[COLUMN_CHANNEL];
+  var launchDate = values[COLUMN_LAUNCH_DATE];
+  var icon = values[COLUMN_ICON];
+  
+  var message;
+  var now = new Date();
+  var prevDate = new Date();
+  prevDate.setDate(prevDate.getDate() - 1);
+  if (launchDate < prevDate) {
+    var sheetUrl = SpreadsheetApp.getActiveSpreadsheet().getUrl();
+    message = "このプロジェクトは終了しました！<" + sheetUrl + "|ここ>から削除してください";
+  } else {
+    var leftDays = Math.ceil((launchDate - now) / DAY_MSECONDS);
+    var leftWorkDays = countWorkday(leftDays, workdays);
+    message = (launchDate.getMonth() + 1) + "月" + launchDate.getDate() + "日まであと" + leftWorkDays + "営業日です";
   }
-  
-  SlackMessage.prototype.postMessage = function(title, channelName, message, icon) {
-    var channelId = this.getChannelId(channelName);
-    this.slackApp.postMessage(channelId,
-                              message, 
-                              {
-                                username : title,
-                                icon_emoji : ":" + icon + ":",
-                              });
-  };
-  
-  SlackMessage.prototype.getChannelId = function(channelName) {
-    var channel = this.channels.filter(function(item, index) {
-      return item.name === channelName;
-    });
-    return channel[0] ? channel[0].id : null;
-  };
-  
-  return SlackMessage;
-})();
+
+  slackMessage.postMessage(title, channel, message, icon); 
+}
 
 
 function loadWorkdays() {
@@ -129,3 +174,31 @@ function countWorkday(days, workdays) {
   });
   return count;
 }
+
+
+var SlackMessage = (function() {
+  function SlackMessage() {
+    var prop = PropertiesService.getScriptProperties().getProperties();
+    this.slackApp = SlackApp.create(prop.token);
+    this.channels = this.slackApp.channelsList().channels;
+  }
+  
+  SlackMessage.prototype.postMessage = function(title, channelName, message, icon) {
+    var channelId = this.getChannelId(channelName);
+    this.slackApp.postMessage(channelId,
+                              message, 
+                              {
+                                username : title,
+                                icon_emoji : ":" + icon + ":",
+                              });
+  };
+  
+  SlackMessage.prototype.getChannelId = function(channelName) {
+    var channel = this.channels.filter(function(item, index) {
+      return item.name === channelName;
+    });
+    return channel[0] ? channel[0].id : null;
+  };
+  
+  return SlackMessage;
+})();
