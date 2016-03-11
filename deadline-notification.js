@@ -38,9 +38,9 @@ function saveToken(str) {
 
 function executeNow() {
   var output = HtmlService.createHtmlOutputFromFile('prompt')
-      .setSandboxMode(HtmlService.SandboxMode.IFRAME)
-      .setWidth(400)
-      .setHeight(200);
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+    .setWidth(400)
+    .setHeight(200);
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   ss.show(output);
 }
@@ -49,7 +49,7 @@ function executeNow() {
 function getProjectList() {
   var sheet = SpreadsheetApp.getActiveSheet();
   var values = sheet.getSheetValues(2, 1, sheet.getLastRow(), 1);
-  return values[0]
+  return values;
 }
 
 
@@ -63,25 +63,7 @@ function postSingleNotificationMessage(row) {
   var slackMessage = new SlackMessage();
   var sheet = SpreadsheetApp.getActiveSheet();
   var values = sheet.getSheetValues(row, 1, 1, sheet.getLastColumn());
-  var sheetUrl = SpreadsheetApp.getActiveSpreadsheet().getUrl();
-
-  var title = values[0][COLUMN_TITLE];
-  var channel = values[0][COLUMN_CHANNEL];
-  var launchDate = values[0][COLUMN_LAUNCH_DATE];
-  var icon = values[0][COLUMN_ICON];
-
-  var message;
-  var prevDate = new Date();
-  prevDate.setDate(prevDate.getDate() - 1);
-  if (launchDate < prevDate) {
-    message = "このプロジェクトは終了しました！<" + sheetUrl + "|ここ>から削除してください";
-  } else {
-    var leftDays = Math.ceil((launchDate - now) / DAY_MSECONDS);
-    var leftWorkDays = countWorkday(leftDays, workdays);
-    message = (launchDate.getMonth() + 1) + "月" + launchDate.getDate() + "日まであと" + leftWorkDays + "営業日です";
-  }
-
-  slackMessage.postMessage(title, channel, message, icon);  
+  postNotificationMessage(slackMessage, workdays, values[0]);
 }
 
 
@@ -96,31 +78,14 @@ function postNotificationMessage() {
   var sheet = SpreadsheetApp.getActiveSheet();
   var values = sheet.getDataRange().getValues();
   var maxRow = sheet.getLastRow();
-  var sheetUrl = SpreadsheetApp.getActiveSpreadsheet().getUrl();
   
   for (var r = 1; r < maxRow; r++) {
-    var title = values[r][COLUMN_TITLE];
-    var channel = values[r][COLUMN_CHANNEL];
-    var launchDate = values[r][COLUMN_LAUNCH_DATE];
-    var icon = values[r][COLUMN_ICON];
-    
-    var message;
-    var prevDate = new Date();
-    prevDate.setDate(prevDate.getDate() - 1);
-    if (launchDate < prevDate) {
-      message = "このプロジェクトは終了しました！<" + sheetUrl + "|ここ>から削除してください";
-    } else {
-      var leftDays = Math.ceil((launchDate - now) / DAY_MSECONDS);
-      var leftWorkDays = countWorkday(leftDays, workdays);
-      message = (launchDate.getMonth() + 1) + "月" + launchDate.getDate() + "日まであと" + leftWorkDays + "営業日です";
-    }
-  
-    slackMessage.postMessage(title, channel, message, icon);
+    postNotificationMessage(slackMessage, workdays, values[r]);
   }
 }
 
 
-function postNotificationMessage(slackMessage, workdays, values, now) {
+function postNotificationMessage(slackMessage, workdays, values) {
   var title = values[COLUMN_TITLE];
   var channel = values[COLUMN_CHANNEL];
   var launchDate = values[COLUMN_LAUNCH_DATE];
