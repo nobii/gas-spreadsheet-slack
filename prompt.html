@@ -1,0 +1,39 @@
+<script type="text/javascript">
+	function successHandler() {
+		google.script.host.close();
+	}
+
+	function loadProjectList(projects) {
+		var projectSelect = document.forms.projectForm.project;
+		for (var i = 0; i < projects.length - 1; i++) {
+			projectSelect.options[i] = new Option(projects[i]);
+		}
+	}
+
+	function sendMessage() {
+		document.getElementById("loading").innerHTML = "Loading...";
+		var projectNumber = document.forms.projectForm.project.selectedIndex + 2;
+		google.script.run.withSuccessHandler(successHandler).postSingleNotificationMessage(projectNumber);
+	}
+
+	google.script.run.withSuccessHandler(loadProjectList).getProjectList();
+</script>
+
+<link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons.css">
+<style>
+  h1 {font-size: 12pt; padding: 5px;}
+  p {margin: 10px;}
+  .send-button {margin-top: 10px;}
+</style>
+
+<h1>実行する案件を選択してください</h1>
+<form name="projectForm">
+	<select name="project">
+	</select>
+</form>
+
+<div class="send-button">
+	<input type="button" class="action" value="実行" onclick="sendMessage()" />
+</div>
+
+<div id="loading"></div>
