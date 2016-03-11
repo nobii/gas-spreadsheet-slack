@@ -67,7 +67,7 @@ function postSingleNotificationMessage(row) {
 }
 
 
-function postNotificationMessage() {
+function postAllNotificationMessage() {
   var now = new Date();
   var workdays = loadWorkdays(now);
   if (!workdays[0]) {
