@@ -55,9 +55,9 @@ function postNotificationMessage() {
     var icon = values[r][COLUMN_ICON];
     
     var message;
-    var nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() - 1);
-    if (launchDate < nextDate) {
+    var prevDate = new Date();
+    prevDate.setDate(prevDate.getDate() - 1);
+    if (launchDate < prevDate) {
       message = "このプロジェクトは終了しました！<" + sheetUrl + "|ここ>から削除してください";
     } else {
       var leftDays = Math.ceil((launchDate - now) / DAY_MSECONDS);
